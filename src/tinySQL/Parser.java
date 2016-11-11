@@ -44,7 +44,7 @@ public class Parser {
 	public Pair<String, LinkedHashMap<String, String>> parseCreate(String sql) {
 		// CREATE TABLE course (sid INT, homework INT, project INT, exam INT, grade STR20)
 		String table_name = sql.trim().toLowerCase().split("[\\s]+")[2];
-        Pattern pattern = Pattern.compile("\\((.+)\\)"); 
+        	Pattern pattern = Pattern.compile("\\((.+)\\)"); 
 		Matcher matcher = pattern.matcher(sql);
 		matcher.find();
 		String[] pairs = matcher.group(1).trim().split("[\\s]*,[\\s]*");
