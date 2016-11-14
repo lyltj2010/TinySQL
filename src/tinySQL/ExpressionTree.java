@@ -1,5 +1,6 @@
 package tinySQL;
 import java.util.*;
+import storageManager.Tuple;
 /*
 SELECT * FROM course WHERE exam = 100
 SELECT * FROM course WHERE grade = "A"
@@ -53,7 +54,8 @@ public class ExpressionTree {
     
     public ExpressionTree(String conds) {
     	 this.operator = new  Stack<String>();
-    	 this.operand = new Stack<Node>();	
+    	 this.operand = new Stack<Node>();
+    	 this.root = buildTree(conds);
     }
     
     public Node buildTree(String conds) {
@@ -72,6 +74,7 @@ public class ExpressionTree {
     	root = operand.pop();
     	return root;
     }
+    public Node getRoot() { return root; }
     
     // Some helper functions
     private void processOperator(String op) {
@@ -135,10 +138,76 @@ public class ExpressionTree {
 		else { return 0; } // like & ( )
 	}
 	
+	public boolean check(Tuple tuple, Node node) {
+		boolean result = toBoolean(evaluate(tuple, node));
+		return result;
+	}
+	
+	public boolean toBoolean(String str) {
+		return str.equals("true") ? true:false;
+	}
+	
+	public String evaluate(Tuple tuple, Node node) {
+		String op = node.op;
+		String left_op, right_op;
+		boolean tmp;
+		if(op.equals("&")) {
+			tmp = toBoolean(evaluate(tuple, node.left)) && toBoolean(evaluate(tuple, node.right));
+			return String.valueOf(tmp);
+		} else if(op.equals("|")) {
+			tmp = toBoolean(evaluate(tuple, node.left)) || toBoolean(evaluate(tuple, node.right));
+			return String.valueOf(tmp);
+		} else if(op.equals("=")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			if(isInt(left_op)) {
+				return String.valueOf(Integer.parseInt(left_op) == Integer.parseInt(right_op));
+			} else {
+				return String.valueOf(left_op.toLowerCase().equals(right_op.replaceAll("\"", "")));
+			}
+		} else if(op.equals(">")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			return String.valueOf(Integer.parseInt(left_op) > Integer.parseInt(right_op));
+		} else if(op.equals("<")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			return String.valueOf(Integer.parseInt(left_op) < Integer.parseInt(right_op));
+		} else if(op.equals("+")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			return String.valueOf(Integer.parseInt(left_op) + Integer.parseInt(right_op));
+		} else if(op.equals("-")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			return String.valueOf(Integer.parseInt(left_op) - Integer.parseInt(right_op));
+		} else if(op.equals("*")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			return String.valueOf(Integer.parseInt(left_op) * Integer.parseInt(right_op));
+		} else if(op.equals("/")) {
+			left_op = evaluate(tuple, node.left);
+			right_op = evaluate(tuple, node.right);
+			return String.valueOf(Integer.parseInt(left_op) / Integer.parseInt(right_op));
+		} else if(isInt(op)){
+			return op;
+		} else {
+			return fetchTuple(tuple, op);
+		}
+	}
+	
+	private String fetchTuple(Tuple tuple, String str) {
+		if(tuple.getSchema().fieldNamesToString().contains(str)){
+			return tuple.getField(str).toString();
+		} else {
+			return str;
+		}
+	}
+	
+	private boolean isInt(String str) { return Character.isDigit(str.charAt(0)); }
+	
 	public static void main(String[] args) {
-		String conds = "course.sid = course2.sid AND course.exam > course2.exam";
-		ExpressionTree exp_tree = new ExpressionTree(conds);
-		Node root = exp_tree.buildTree(conds);
-		System.out.println(root);
+		// String conds = "exam = 100 AND project = 100";
+		// ExpressionTree exp_tree = new ExpressionTree(conds);
 	}
 }
