@@ -22,32 +22,7 @@ SELECT DISTINCT course.grade, course2.grade FROM course, course2 WHERE
 SELECT * FROM r, s, t WHERE r.a = t.a AND r.b = s.b AND s.c = t.c
 */
 
-public class ExpressionTree {	
-    /** class Node **/
-    private class Node {    
-        String op;
-        Node left, right;
-        public Node() {};
-        public Node(String op) { this.op = op; }
-        public Node(String op, Node left, Node right) {
-        	this.op = op;
-        	this.left = left;
-        	this.right = right;
-        }
-        private String infix() {
-        	String str = "";
-        	if (left != null) 
-    			str += "("+left.infix();
-    		str += op;
-    		if (right != null)
-    			str += right.infix()+")";
-    		return str;
-        }
-        public String toString(){
-        	return infix();
-        }
-    }
-    
+public class ExpressionTree {
     private Stack<String> operator;
     private Stack<Node> operand;
     private Node root;
@@ -143,11 +118,11 @@ public class ExpressionTree {
 		return result;
 	}
 	
-	public boolean toBoolean(String str) {
-		return str.equals("true") ? true:false;
+	private boolean toBoolean(String str) {
+		return str.equals("true")? true:false;
 	}
 	
-	public String evaluate(Tuple tuple, Node node) {
+	private String evaluate(Tuple tuple, Node node) {
 		String op = node.op;
 		String left_op, right_op;
 		boolean tmp;
@@ -207,7 +182,8 @@ public class ExpressionTree {
 	private boolean isInt(String str) { return Character.isDigit(str.charAt(0)); }
 	
 	public static void main(String[] args) {
-		// String conds = "exam = 100 AND project = 100";
-		// ExpressionTree exp_tree = new ExpressionTree(conds);
+		 String conds = "exam = 100 AND project = 100";
+		 ExpressionTree exp_tree = new ExpressionTree(conds);
+		 System.out.println(exp_tree.getRoot());
 	}
 }
