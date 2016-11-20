@@ -1,4 +1,7 @@
 package tinySQL;
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.IOException;
 import java.util.*;
 import storageManager.*;
 
@@ -12,6 +15,18 @@ public class PhysicalQuery {
 		mem = new MainMemory(); disk=new Disk();
 		schema_manager=new SchemaManager(mem,disk);
 		disk.resetDiskIOs(); disk.resetDiskTimer();
+	}
+	
+	public void exec(String sql) {
+		String stmt = sql.trim().toLowerCase().split("[\\s]+")[0];
+		switch(stmt) {
+		case "insert": this.insertQuery(sql); break;
+		case "select": this.selectQuery(sql); break;
+		case "create": this.createQuery(sql); break;
+		case "drop": this.dropQuery(sql); break;
+		case "delete": this.deleteQuery(sql); break;
+		default:;
+		}
 	}
 	
 	private Schema createSchema(LinkedHashMap<String, FieldType> raw_schema) {
@@ -38,12 +53,13 @@ public class PhysicalQuery {
 		return tuple;
 	}
 	
-	public Relation createQuery(String sql) {
+	public void createQuery(String sql) {
 		String relation_name = parser.parseCreate(sql).a;
 		Schema schema = createSchema(parser.parseCreate(sql).b);
-	    Relation relation_reference=schema_manager.createRelation(relation_name,schema);
+		schema_manager.createRelation(relation_name,schema);
+	    // Relation relation_reference=schema_manager.createRelation(relation_name,schema);
 	    // System.out.print(relation_reference.getSchema() + "\n");
-	    return relation_reference;
+	    // return relation_reference;
 	}
 
 	public void insertQuery(String sql) {
@@ -56,10 +72,9 @@ public class PhysicalQuery {
 		appendTupleToRelation(relation_reference, mem, 0, tuple);
 	}
 	
-	public boolean dropQuery(String sql) {
+	public void dropQuery(String sql) {
 		String relation_name = parser.parseDrop(sql);
 		schema_manager.deleteRelation(relation_name);
-		return true;
 	}
 	
 	public void deleteQuery(String sql) {
@@ -94,30 +109,47 @@ public class PhysicalQuery {
 	}
 	
 	public void selectQuery(String sql) {
-		ParserTree tree = parser.parseSelect(sql);
+		ParserTree tree = parser.parseSelect(schema_manager, sql);
+		if(tree.tables.length == 1) { selectQuery1(tree); }
+		else { selectQuery2(tree); }	
+	}
+	
+	private void selectQuery1(ParserTree tree) {
+		// One table case
 		ArrayList<Tuple> tuples = new ArrayList<Tuple>();
-		String[] relation_names = tree.tables;
-		
-		for(String relation_name:relation_names) {
-			Relation relation_reference = schema_manager.getRelation(relation_name);
-			for(int i = 0; i < relation_reference.getNumOfBlocks(); i++) {
-				// System.out.println("Where are you?");
-				relation_reference.getBlock(i,0); // get ith block of relation into memory block 0
-				Block block_reference=mem.getBlock(0);
-				for(Tuple tp:block_reference.getTuples()) {
-					if(tree.where) {
-						ExpressionTree cond_tree = tree.conditions; 
-						if(cond_tree.check(tp, cond_tree.getRoot())) tuples.add(tp); 
-					} else {
-						tuples.add(tp); 
-					}	
+		String relation_name = tree.tables[0];
+		Relation relation_reference = schema_manager.getRelation(relation_name);
+		for(int i = 0; i < relation_reference.getNumOfBlocks(); i++) {
+			relation_reference.getBlock(i,0); // get ith block of relation into memory block 0
+			Block block_reference=mem.getBlock(0); 
+			if (block_reference.getNumTuples() == 0) continue;
+			for(Tuple tp:block_reference.getTuples()) {
+				if(tree.where) {
+					ExpressionTree cond_tree = tree.conditions; 
+					if(cond_tree.check(tp, cond_tree.getRoot())) tuples.add(tp); 
+				} else {
+					tuples.add(tp); 
 				}
 			}
 		}
 		for(Tuple tp:tuples) { System.out.println(tp); }
 	}
 	
-	private void appendTupleToRelation(Relation relation_reference, MainMemory mem, int memory_block_index, Tuple tuple) {
+	private void selectQuery2(ParserTree tree){
+		// Multiple tables case
+		System.out.println(tree.conditions.getRoot());
+		String[] tables = tree.tables;
+		if(tree.where) {
+			// TODO handle SELECT * FROM course, course2
+		}
+		ArrayList<String> temp_tables = Join.joinTables(this, tables, tree.conditions);
+		String table = temp_tables.get(temp_tables.size()-1);
+		tree.tables = new String[] {table}; // replace with the final joined table
+		selectQuery1(tree);
+		Join.DropTempTables(this, temp_tables);
+	}
+	
+	public static void appendTupleToRelation(Relation relation_reference, MainMemory mem, int memory_block_index, Tuple tuple) {
 	    Block block_reference;
 	    if (relation_reference.getNumOfBlocks()==0) {
 	      block_reference=mem.getBlock(memory_block_index);
@@ -140,26 +172,31 @@ public class PhysicalQuery {
 	
 	private boolean isInt(String str) { return Character.isDigit(str.charAt(0)); }
 	
+	public void parseFile(String file) {
+		BufferedReader br = null;
+		try {
+			br = new BufferedReader(new FileReader(file));
+			String line;
+			while((line = br.readLine()) != null) {
+				this.exec(line);
+			}
+		} catch(IOException e) {
+			e.printStackTrace();
+		} finally {
+			try {
+				br.close();
+			} catch (IOException e) {
+				e.printStackTrace();
+			}
+		}
+	}
+	
 	public static void main(String[] args) {
 		PhysicalQuery query = new PhysicalQuery();
-		// Test Create
-		String create = "CREATEd TABLE course (sid INT, homework INT, project INT, exam INT, grade STR20)";
-		query.createQuery(create);
-		// Test Insert
-		String insert1 = "INSERT INTO course (sid, homework, project, exam, grade) VALUES (1, 99, 100, 100, \"B\")";
-		String insert2 = "INSERT INTO course (sid, homework, project, exam, grade) VALUES (3, 100, 100, 98, \"A\")";
-		String insert3 = "INSERT INTO course (sid, homework, project, exam, grade) VALUES (3, 100, 69, 64, \"C\")";
-		String insert4 = "INSERT INTO course (sid, homework, project, exam, grade) VALUES (4, 89, 68, 64, \"C\")";
-		query.insertQuery(insert1);
-		query.insertQuery(insert2);
-		query.insertQuery(insert3);
-		query.insertQuery(insert4);
-		// Select
-		String select1 = "SELECT * FROM course WHERE sid > 1";
-		query.selectQuery(select1);
-		String delete = "DELETE FROM course  WHERE sid = 3";
-		query.deleteQuery(delete);
-		System.out.println("After Deletion");
-		query.selectQuery(select1);
+		
+		long startTime = System.nanoTime();
+		query.parseFile("test.txt");
+		long endTime = System.nanoTime();
+		System.out.println("Used: " + (endTime - startTime) / 1000000 + "ms");		
 	}
 }
