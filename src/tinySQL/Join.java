@@ -1,7 +1,6 @@
 package tinySQL;
 import java.util.ArrayList;
 import java.util.HashSet;
-
 import storageManager.*;
 
 public class Join {
@@ -28,6 +27,27 @@ public class Join {
 		}
 		return temp_tables;
 	}
+	
+	public static ArrayList<String> joinTables(PhysicalQuery Phi, String[] tables) {
+		// Handle query without where clause
+		ArrayList<String> temp_tables = new ArrayList<String>();
+		String t1; String t2;
+		int index = 0;
+		for(; index < tables.length; index++) {
+			if(index == 0) {
+				t1 = tables[index]; t2 = tables[index+1];
+				Join.joinTwoTables(Phi, t1, t2);
+				temp_tables.add(t1 + "_cross_" + t2);
+				index += 1;
+			} else {
+				t1 = temp_tables.get(temp_tables.size()-1);
+				t2 = tables[index];
+				Join.joinTwoTables(Phi, t1, t2);
+				temp_tables.add(t1 + "_cross_" + t2);
+			}
+		}
+		return temp_tables;
+	}
 
 	private static ArrayList<Node> splitNode(Node node) {
 		ArrayList<Node> nodes = new ArrayList<Node>();
@@ -49,6 +69,37 @@ public class Join {
 		tableSet.addAll(pushToWhich(node.left));
 		tableSet.addAll(pushToWhich(node.right));
 		return tableSet;
+	}
+	
+	private static String joinTwoTables(PhysicalQuery Phi, String t1, String t2) {
+		SchemaManager schema_manager = Phi.schema_manager;
+		Relation relation1 = schema_manager.getRelation(t1);
+		Relation relation2 = schema_manager.getRelation(t2);
+		Schema schema3 = joinTwoSchema(t1, t2, relation1.getSchema(), relation2.getSchema());
+		String t3 = t1 + "_cross_" + t2; // joined table name like course_cross_course2
+		schema_manager.createRelation(t3, schema3);
+		Relation relation3 = schema_manager.getRelation(t3);
+		Tuple tp3 = relation3.createTuple();
+		
+		// Read in tuples from t1 and t2, join them and insert into t3
+		for(int i = 0; i < relation1.getNumOfBlocks(); i++) {
+			relation1.getBlock(i, 0);
+			Block block_reference1 = Phi.mem.getBlock(0);
+			if (block_reference1.getNumTuples() == 0) continue;
+			for(Tuple tp1:block_reference1.getTuples()) {
+				// inner loop for relation 2
+				for(int j = 0; j < relation2.getNumOfBlocks(); j++) {
+					relation2.getBlock(j, 2); // TODO read in multiple blocks
+					Block block_reference2 = Phi.mem.getBlock(2);
+					if (block_reference2.getNumTuples() == 0) continue;
+					for(Tuple tp2:block_reference2.getTuples()) {
+						tp3 = joinTwoTuples(tp1, tp2, tp3);
+						PhysicalQuery.appendTupleToRelation(relation3, Phi.mem, 9, tp3);
+					}
+				}
+			}
+		}
+		return t3;
 	}
 	
 	private static String joinTwoTables(PhysicalQuery Phi, String t1, String t2, ArrayList<Node> nodes, ExpressionTree exp_tree) {

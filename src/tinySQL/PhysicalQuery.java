@@ -132,21 +132,51 @@ public class PhysicalQuery {
 				}
 			}
 		}
-		for(Tuple tp:tuples) { System.out.println(tp); }
+		
+		if(!tree.tables[0].contains("_cross_")) {
+			// handle case like SELECT course.sid, exam FROM course
+			ArrayList<String> new_attributes = new ArrayList<String>();
+			for(String attr:tree.attributes) {
+				if(attr.contains(".")) { new_attributes.add(attr.split("\\.")[1]);} 
+				else { new_attributes.add(attr); }
+			}
+			tree.attributes = new_attributes;
+		}
+		outputTuples(tree.attributes, tuples);
 	}
 	
 	private void selectQuery2(ParserTree tree){
-		// Multiple tables case
-		System.out.println(tree.conditions.getRoot());
+		// Multiple tables case, cross join tables and use one table case on joined table
 		String[] tables = tree.tables;
+		ArrayList<String> temp_tables  = new ArrayList<String>();
 		if(tree.where) {
-			// TODO handle SELECT * FROM course, course2
+			temp_tables = Join.joinTables(this, tables, tree.conditions);
+		} else {
+			temp_tables = Join.joinTables(this, tables);
 		}
-		ArrayList<String> temp_tables = Join.joinTables(this, tables, tree.conditions);
 		String table = temp_tables.get(temp_tables.size()-1);
 		tree.tables = new String[] {table}; // replace with the final joined table
 		selectQuery1(tree);
 		Join.DropTempTables(this, temp_tables);
+	}
+	
+	private void outputTuples(ArrayList<String> attributes, ArrayList<Tuple> tuples) {
+		if(tuples.size() == 0) { 
+			System.out.println("No Tuple Found!"); return;
+		}
+		if(attributes.size() == 1 && attributes.get(0).equals("*")) {
+			// Output all attributes
+			for(Tuple tp:tuples) { System.out.println(tp); }
+		} else {
+			// Output specified attributes
+			String str = "";
+			str = String.join("\t", attributes) + "\n";
+			for(Tuple tp:tuples) {
+				for(String attr:attributes) { str += tp.getField(attr) + "\t"; }
+				str+=("\n");				
+			}
+			System.out.println(str);
+		}
 	}
 	
 	public static void appendTupleToRelation(Relation relation_reference, MainMemory mem, int memory_block_index, Tuple tuple) {
@@ -193,7 +223,6 @@ public class PhysicalQuery {
 	
 	public static void main(String[] args) {
 		PhysicalQuery query = new PhysicalQuery();
-		
 		long startTime = System.nanoTime();
 		query.parseFile("test.txt");
 		long endTime = System.nanoTime();
