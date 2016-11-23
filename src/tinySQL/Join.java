@@ -7,9 +7,8 @@ public class Join {
 	public static ArrayList<String> joinTables(PhysicalQuery Phi, String[] tables, ExpressionTree exp_tree) {
 		// Join multiple tables and return temporary tables
 		ArrayList<String> temp_tables = new ArrayList<String>();
-		Node node = exp_tree.getRoot();
+		Node node = exp_tree.getRoot();		
 		ArrayList<Node> nodes = splitNode(node); // sub conditions to be pushed down
-		
 		String t1; String t2;
 		int index = 0;
 		for(; index < tables.length; index++) {
@@ -111,14 +110,13 @@ public class Join {
 		schema_manager.createRelation(t3, schema3);
 		Relation relation3 = schema_manager.getRelation(t3);
 		Tuple tp3 = relation3.createTuple();
-		
 		// Read in tuples from t1 and t2, join them and insert into t3
 		for(int i = 0; i < relation1.getNumOfBlocks(); i++) {
 			relation1.getBlock(i, 0);
 			Block block_reference1 = Phi.mem.getBlock(0);
 			if (block_reference1.getNumTuples() == 0) continue;
-			for(Tuple tp1:block_reference1.getTuples()) {
-				if(!check(t1, tp1, nodes, exp_tree)) continue; // selection pushed down
+			for(Tuple tp1:block_reference1.getTuples()) {				
+				if(!check(t1, tp1, nodes, exp_tree))  continue; // selection pushed down				
 				// inner loop for relation 2
 				for(int j = 0; j < relation2.getNumOfBlocks(); j++) {
 					relation2.getBlock(j, 2); // TODO read in multiple blocks
@@ -151,13 +149,14 @@ public class Join {
 	
 	private static Node stripTableName(Node node) {
 		// in subnode, attr may contain course.sid, but in single table, just sid in fields
-		if(node.left == null || node.right == null) {
-			if(node.op.contains(".")) node.op = node.op.split("\\.")[1];
-			return node;
+		Node new_node = node.copy(); // deep copy node, leave original node unchanged
+		if(new_node.left == null || new_node.right == null) {
+			if(new_node.op.contains(".")) new_node.op = new_node.op.split("\\.")[1];
+			return new_node;
 		}
-		node.left = stripTableName(node.left);
-		node.right = stripTableName(node.right);
-		return node;
+		new_node.left = stripTableName(new_node.left);
+		new_node.right = stripTableName(new_node.right);
+		return new_node;
 	}
 	
 	private static Schema joinTwoSchema(String t1, String t2, Schema schema1, Schema schema2) {

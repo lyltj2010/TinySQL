@@ -9,6 +9,19 @@ public class Node {
 		this.left = left;
 		this.right = right;
 	}
+	
+    Node copy() {
+        Node left = null;
+        Node right = null;
+        if (this.left != null) {
+            left = this.left.copy();
+        }
+        if (this.right != null) {
+            right = this.right.copy();
+        }
+        return new Node(op, left, right);
+    }
+
 	private String infix() {
 		String str = "";
 		if (left != null) 
