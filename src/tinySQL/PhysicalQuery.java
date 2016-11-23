@@ -125,16 +125,18 @@ public class PhysicalQuery {
 			if (block_reference.getNumTuples() == 0) continue;
 			for(Tuple tp:block_reference.getTuples()) {
 				if(tree.where) {
-					ExpressionTree cond_tree = tree.conditions; 
-					if(cond_tree.check(tp, cond_tree.getRoot())) tuples.add(tp); 
+					ExpressionTree cond_tree = tree.conditions;
+					if(cond_tree.check(tp, cond_tree.getRoot())) tuples.add(tp);
 				} else {
-					tuples.add(tp); 
+					tuples.add(tp);
 				}
 			}
 		}
-		
+		// distinct
+		if(tree.distinct) tuples = distinctTuples(tree.distinct_str, tuples);
+		if(tree.order_by != null) tuples = orderTuples(tree.order_by, tuples);
+		// handle case like SELECT course.sid, exam FROM course
 		if(!tree.tables[0].contains("_cross_")) {
-			// handle case like SELECT course.sid, exam FROM course
 			ArrayList<String> new_attributes = new ArrayList<String>();
 			for(String attr:tree.attributes) {
 				if(attr.contains(".")) { new_attributes.add(attr.split("\\.")[1]);} 
@@ -143,6 +145,41 @@ public class PhysicalQuery {
 			tree.attributes = new_attributes;
 		}
 		outputTuples(tree.attributes, tuples);
+	}
+	
+	private ArrayList<Tuple> orderTuples(String order_by, ArrayList<Tuple> tuples) {
+		PriorityQueue<MyTuple> my_tuples = new PriorityQueue<MyTuple>();
+		ArrayList<Tuple> ordered_tuples = new ArrayList<Tuple>();
+		int index = 0;
+		for(Tuple tuple:tuples) {
+			MyTuple my_tuple = new MyTuple(tuple.getField(order_by), index, tuple);
+			my_tuples.add(my_tuple);
+			index += 1;
+		}
+		while(!my_tuples.isEmpty()) {
+			ordered_tuples.add(tuples.get(my_tuples.remove().getIndex()));
+		}
+		return ordered_tuples;
+	}
+	
+	private ArrayList<Tuple> distinctTuples(String distinct_str, ArrayList<Tuple> tuples) {
+		ArrayList<Tuple> tmp_tuples = new ArrayList<Tuple>();
+		HashSet<MyTuple> my_tuples = new HashSet<MyTuple>();
+		if(distinct_str.equals("*")) {
+			for(Tuple tuple:tuples) {
+				MyTuple my_tuple = new MyTuple(tuple);
+				if(my_tuples.add(my_tuple)) tmp_tuples.add(tuple);
+			}
+			tuples.removeAll(tuples);
+		} else {
+			for(Tuple tuple:tuples) {
+				MyTuple my_tuple = new MyTuple(tuple.getField(distinct_str));
+				if(my_tuples.add(my_tuple)) tmp_tuples.add(tuple);
+			}
+			tuples.removeAll(tuples);
+		}
+		
+		return tmp_tuples;
 	}
 	
 	private void selectQuery2(ParserTree tree){
