@@ -167,6 +167,7 @@ public class Disk implements Serializable {
 
   //for internal use: increment Disk time
   protected void incrementDiskTimer(int num_blocks) {
+	// self test, no sleep
     if (Config.SIMULATED_DISK_LATENCY_ON) {
       try {
         Thread.sleep((long)(avg_seek_time+avg_rotation_latency

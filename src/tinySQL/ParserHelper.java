@@ -31,8 +31,6 @@ public class ParserHelper {
 			return this.isValidName(str);
 		}
 	}
-	// System.out.println(Character.isDigit('2'));
-	//System.out.println(Character.isLetter('c'));
 	
 	// Syntax Checkers
 	public boolean checkCreate(String sql) {

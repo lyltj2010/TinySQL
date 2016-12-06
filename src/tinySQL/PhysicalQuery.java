@@ -7,6 +7,7 @@ import storageManager.*;
 
 public class PhysicalQuery {
 	Parser parser;
+	ParserHelper helper;
 	MainMemory mem;
 	Disk disk;
 	SchemaManager schema_manager;
@@ -46,9 +47,14 @@ public class PhysicalQuery {
 		Tuple tuple = relation_reference.createTuple();
 		for(String key:tp.keySet()) {
 			String field = key;
-			String value = tp.get(key);
-			if(isInt(value)) { tuple.setField(field, Integer.parseInt(value)); }
-			else { tuple.setField(field, value); }
+			String value = tp.get(key);			
+			if(isInt(value)) {
+				tuple.setField(field, Integer.parseInt(value));
+			} else if(value.toLowerCase().equals("null")) {
+				continue;
+			} else {
+				tuple.setField(field, value);
+			}
 		}
 		return tuple;
 	}
@@ -63,13 +69,22 @@ public class PhysicalQuery {
 	}
 
 	public void insertQuery(String sql) {
-		String relation_name = parser.parseInsert(sql).a;
-		LinkedHashMap<String, String> tp = parser.parseInsert(sql).b;
-		
-		Relation relation_reference = schema_manager.getRelation(relation_name);
-		Tuple tuple = createTuple(relation_reference, tp);
-	    // System.out.print(tuple.getSchema() + "\n");
-		appendTupleToRelation(relation_reference, mem, 0, tuple);
+		if(sql.toLowerCase().contains("select")) {
+			// INSERT INTO course (sid, homework, project, exam, grade) SELECT * FROM course
+			// Not general
+			// TODO insert into with subquery
+			String[] words = sql.toLowerCase().split("[\\s]+");
+			int fromid = Arrays.asList(words).indexOf("from");
+			String insert_table = words[2];
+			String from_table = words[fromid + 1];
+			String[] fields = parser.parseInsert2(sql);
+		} else {
+			String relation_name = parser.parseInsert(sql).a;
+			LinkedHashMap<String, String> tp = parser.parseInsert(sql).b;
+			Relation relation_reference = schema_manager.getRelation(relation_name);
+			Tuple tuple = createTuple(relation_reference, tp);
+			appendTupleToRelation(relation_reference, mem, 0, tuple);
+		}		
 	}
 	
 	public void dropQuery(String sql) {
@@ -178,7 +193,6 @@ public class PhysicalQuery {
 			}
 			tuples.removeAll(tuples);
 		}
-		
 		return tmp_tuples;
 	}
 	
@@ -263,6 +277,6 @@ public class PhysicalQuery {
 		long startTime = System.nanoTime();
 		query.parseFile("test.txt");
 		long endTime = System.nanoTime();
-		System.out.println("Used: " + (endTime - startTime) / 1000000 + "ms");		
+		System.out.println("Used: " + (endTime - startTime) / 1000000000 + "s");		
 	}
 }

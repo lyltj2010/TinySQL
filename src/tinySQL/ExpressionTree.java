@@ -50,6 +50,7 @@ public class ExpressionTree {
     	return root;
     }
     public Node getRoot() { return root; }
+    public void setRoot(Node root) { this.root = root; }
     
     // Some helper functions
     private void processOperator(String op) {

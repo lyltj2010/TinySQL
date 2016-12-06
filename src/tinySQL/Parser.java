@@ -199,13 +199,11 @@ public class Parser {
 	public Pair<String, LinkedHashMap<String, String>> parseInsert(String sql) {
 		// INSERT INTO course (sid, homework, project, exam, grade) VALUES (1, 99, 100, 100, "A")
 		String table_name = sql.trim().toLowerCase().split("[\\s]+")[2];
-
 		Pattern pattern = Pattern.compile("\\((.+)\\).*\\((.+)\\)"); 
 		Matcher matcher = pattern.matcher(sql);
 		matcher.find();
 		String[] attrs = matcher.group(1).trim().split("[\\s]*,[\\s]*");
 		String[] values = matcher.group(2).trim().split("[\\s]*,[\\s]*");
-
 		LinkedHashMap<String, String> record = new LinkedHashMap<String, String>();
 		for(int i=0; i<attrs.length; i++) {
 			String value = values[i].replaceAll("^[\\'\"]","").replaceAll("[\\'\"]$", "");
@@ -213,6 +211,17 @@ public class Parser {
 		}
 		return new Pair<String, LinkedHashMap<String, String>>(table_name, record);
 	}
+	
+	public String[] parseInsert2(String sql) {
+		// catch (sid, homework, project, exam, grade)
+		sql = sql.toLowerCase();
+		Pattern pattern = Pattern.compile("\\((.+)\\)"); 
+		Matcher matcher = pattern.matcher(sql);
+		matcher.find();
+		String[] fields = matcher.group(1).trim().split("[\\s]*,[\\s]*");
+		return fields;
+	}
+	
 	
 	public static void error(String message) {
 		System.out.println(message); 

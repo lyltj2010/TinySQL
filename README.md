@@ -1,5 +1,14 @@
 # TinySQL
 
+### Usage
+
+Enter TinySQL folder and open terminal here:  
+
+`java -jar interface.jar` to enter interactive mode;  
+`java -jar interface.jar text.txt` to execute sql statements from a file;
+`java -jar interface.jar text.txt > output.txt` to redirect output to a file.
+
+
 ### Software Architecture
 
 This tiny sql consists of several parts, parser, logical query plan, physical query plan and some optimization. Each part may consists of some helper classes which will be demonstrated in each corresponding part.
